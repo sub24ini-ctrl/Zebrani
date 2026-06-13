@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#0a84ff">
+    <title>SHADOW HUB</title>
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22ShadowHub%22,%22short_name%22:%22Shadow%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22#000000%22,%22theme_color%22:%22#0a84ff%22}">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-card: #0f1114;
+            --accent-red: #ff3b3b;
+            --accent-red-dim: #991b1b;
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --border-red: #450a0a;
+            --glow-red: 0 0 15px rgba(255, 59, 59, 0.3);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-red-dim); border-radius: 10px; }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-red);
+            padding-bottom: var(--safe-area-bottom);
+            padding-top: 10px;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            flex: 1;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active { color: var(--accent-red); text-shadow: var(--glow-red); }
+        .nav-icon { font-size: 20px; margin-bottom: 4px; }
+
+        /* Main Content */
+        main { flex: 1; overflow-y: auto; position: relative; }
+        .view { display: none; padding: 20px; min-height: 100%; box-sizing: border-box; }
+        .view.active { display: block; }
+
+        /* Header */
+        header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-red);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+        }
+        .header-title { font-weight: 800; letter-spacing: 2px; color: var(--accent-red); font-size: 1.2rem; }
+
+        /* Chat UI */
+        #chat-container { display: flex; flex-direction: column; height: 100%; }
+        #chat-messages { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+        .message { margin-bottom: 15px; padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; }
+        .msg-ai { background: var(--bg-card); border-left: 3px solid var(--accent-red); align-self: flex-start; }
+        .msg-user { background: var(--accent-red-dim); align-self: flex-end; margin-left: auto; }
+        .chat-input-area { display: flex; gap: 10px; padding: 10px 0; }
+        input[type="text"], input[type="password"], select, textarea {
+            background: #1a1a1a;
+            border: 1px solid var(--border-red);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            width: 100%;
+            outline: none;
+        }
+        input:focus { border-color: var(--accent-red); }
+        button {
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button.secondary { background: #333; }
+        button:active { opacity: 0.7; }
+
+        /* Camera Hub UI */
+        .camera-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 600px) { .camera-grid { grid-template-columns: 1fr 1fr; } }
+
+        .cam-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-red);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .cam-preview {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .cam-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-online { background: #10b981; }
+        .status-offline { background: #ef4444; }
+
+        .cam-details { padding: 15px; }
+        .cam-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .cam-actions button { flex: 1; padding: 8px; font-size: 12px; }
+
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; }
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: none;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .modal.active { display: block; }
+        .modal-content { background: var(--bg-card); border: 1px solid var(--accent-red); border-radius: 16px; padding: 25px; max-width: 500px; margin: 20px auto; }
+
+        /* History & Diagnostics */
+        .log-entry { font-family: monospace; font-size: 11px; padding: 8px; border-bottom: 1px solid #222; color: #0f0; }
+        .diag-card { background: #111; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 12px; }
+
+        .empty-state { text-align: center; color: var(--text-secondary); padding: 40px 20px; border: 1px dashed var(--border-red); border-radius: 12px; }
+
+        /* AI Settings */
+        .provider-badge {
+            display: inline-block;
+            background: var(--accent-red-dim);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-title">SHADOW // HUB</div>
+    <div id="active-provider-badge" class="provider-badge">DEFAULT</div>
+</header>
+
+<main>
+    <!-- CHAT VIEW -->
+    <section id="view-chat" class="view active">
+        <div id="chat-container">
+            <div id="chat-messages">
+                <div class="message msg-ai">System initialized. Security protocols active. How can I assist you, Operator?</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Type command...">
+                <button onclick="sendChat()">SEND</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- CAMERAS VIEW -->
+    <section id="view-cameras" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin:0">MANAGED FEEDS</h2>
+            <button onclick="openCameraModal()">+ ADD CAMERA</button>
+        </div>
+        <div id="camera-list" class="camera-grid">
+            <!-- Cameras injected here -->
+        </div>
+    </section>
+
+    <!-- MONITORING VIEW -->
+    <section id="view-monitoring" class="view">
+        <h2>REAL-TIME DIAGNOSTICS</h2>
+        <div id="diagnostics-log" class="cam-card" style="padding:15px; height: 300px; overflow-y: auto; background:#000;">
+            <div class="log-entry">[SYS] MONITORING SYSTEM ONLINE</div>
+        </div>
+        <h2 style="margin-top:20px">DETECTION HISTORY</h2>
+        <div id="detection-history">
+            <div class="empty-state">No human/motion detections recorded in the last 24h.</div>
+        </div>
+    </section>
+
+    <!-- ARCHIVE VIEW -->
+    <section id="view-archive" class="view">
+        <h2>FOOTAGE ARCHIVE</h2>
+        <div class="empty-state">Secure storage empty. No saved event clips found.</div>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section id="view-settings" class="view">
+        <h2>AI PROVIDER SETTINGS</h2>
+        <div class="form-group">
+            <label>Active Provider</label>
+            <select id="ai-provider" onchange="saveAISettings()">
+                <option value="OpenAI">OpenAI (GPT-4o)</option>
+                <option value="Gemini">Google Gemini Pro</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>OpenAI API Key</label>
+            <input type="password" id="openai-key" onchange="saveAISettings()" placeholder="sk-...">
+        </div>
+        <div class="form-group">
+            <label>Gemini API Key</label>
+            <input type="password" id="gemini-key" onchange="saveAISettings()" placeholder="AIza...">
+        </div>
+        <div style="margin-top: 40px; color: var(--text-secondary); font-size: 12px; text-align: center;">
+            SHADOW HUB OS v2.4.1<br>ENCRYPTED END-TO-END
+        </div>
+    </section>
+</main>
+
+<!-- CAMERA MODAL -->
+<div id="camera-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title" style="margin-top:0">MANAGER CAMERA</h2>
+        <input type="hidden" id="cam-edit-id">
+        <div class="form-group">
+            <label>Camera Name</label>
+            <input type="text" id="cam-name" placeholder="Front Door">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+            <div class="form-group">
+                <label>Brand</label>
+                <select id="cam-brand">
+                    <option>Tapo</option>
+                    <option>Reolink</option>
+                    <option>Custom</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" id="cam-loc" placeholder="Exterior">
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="cam-user">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="cam-pass">
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px">
+            <div class="form-group">
+                <label>IP Address</label>
+                <input type="text" id="cam-ip" placeholder="192.168.1.100">
+            </div>
+            <div class="form-group">
+                <label>Port</label>
+                <input type="text" id="cam-port" placeholder="554">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>RTSP URL</label>
+            <input type="text" id="cam-rtsp" placeholder="rtsp://...">
+        </div>
+        <div class="form-group">
+            <label>ONVIF URL</label>
+            <input type="text" id="cam-onvif" placeholder="http://.../onvif/device_service">
+        </div>
+        
+        <div class="cam-actions">
+            <button class="secondary" onclick="testConnection()">TEST</button>
+            <button onclick="saveCamera()">SAVE CAMERA</button>
+            <button class="secondary" style="background:#440000" onclick="closeCameraModal()">CANCEL</button>
+        </div>
+    </div>
+</div>
+
+<nav>
+    <div class="nav-item active" onclick="switchView('chat')">
+        <div class="nav-icon">▣</div>
+        <span>Chat</span>
+    </div>
+    <div class="nav-item" onclick="switchView('cameras')">
+        <div class="nav-icon">◎</div>
+        <span>Cameras</span>
+    </div>
+    <div class="nav-item" onclick="switchView('monitoring')">
+        <div class="nav-icon">◈</div>
+        <span>Monitor</span>
+    </div>
+    <div class="nav-item" onclick="switchView('archive')">
+        <div class="nav-icon">▤</div>
+        <span>Archive</span>
+    </div>
+    <div class="nav-item" onclick="switchView('settings')">
+        <div class="nav-icon">⚙</div>
+        <span>Settings</span>
+    </div>
+</nav>
+
+<script>
+    // State Management
+    let cameras = JSON.parse(localStorage.getItem('shadow_cameras') || '[]');
+    let settings = JSON.parse(localStorage.getItem('shadow_settings') || '{"provider":"OpenAI","openai":"","gemini":""}');
+
+    function switchView(viewId) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(v => v.classList.remove('active'));
+        document.getElementById(`view-${viewId}`).classList.add('active');
+        const navItems = document.querySelectorAll('.nav-item');
+        const indexMap = {chat:0, cameras:1, monitoring:2, archive:3, settings:4};
+        navItems[indexMap[viewId]].classList.add('active');
+    }
+
+    // Camera Hub
+    function openCameraModal(editId = null) {
+        const modal = document.getElementById('camera-modal');
+        const title = document.getElementById('modal-title');
+        title.innerText = editId ? "EDIT CAMERA" : "REGISTER CAMERA";
+        
+        if(editId) {
+            const cam = cameras.find(c => c.id === editId);
+            document.getElementById('cam-edit-id').value = cam.id;
+            document.getElementById('cam-name').value = cam.name;
+            document.getElementById('cam-brand').value = cam.brand;
+            document.getElementById('cam-user').value = cam.user;
+            document.getElementById('cam-pass').value = cam.pass;
+            document.getElementById('cam-ip').value = cam.ip;
+            document.getElementById('cam-port').value = cam.port;
+            document.getElementById('cam-rtsp').value = cam.rtsp;
+            document.getElementById('cam-onvif').value = cam.onvif;
+            document.getElementById('cam-loc').value = cam.loc;
+        } else {
+            document.getElementById('cam-edit-id').value = '';
+            document.querySelectorAll('#camera-modal input').forEach(i => i.value = '');
+        }
+        modal.classList.add('active');
+    }
+
+    function closeCameraModal() {
+        document.getElementById('camera-modal').classList.remove('active');
+    }
+
+    function saveCamera() {
+        const id = document.getElementById('cam-edit-id').value || Date.now().toString();
+        const data = {
+            id,
+            name: document.getElementById('cam-name').value,
+            brand: document.getElementById('cam-brand').value,
+            user: document.getElementById('cam-user').value,
+            pass: document.getElementById('cam-pass').value,
+            ip: document.getElementById('cam-ip').value,
+            port: document.getElementById('cam-port').value,
+            rtsp: document.getElementById('cam-rtsp').value,
+            onvif: document.getElementById('cam-onvif').value,
+            loc: document.getElementById('cam-loc').value,
+            status: Math.random() > 0.3 ? 'online' : 'offline'
+        };
+
+        const idx = cameras.findIndex(c => c.id === id);
+        if(idx > -1) cameras[idx] = data; else cameras.push(data);
+        
+        localStorage.setItem('shadow_cameras', JSON.stringify(cameras));
+        renderCameras();
+        addLog(`Camera "${data.name}" configured and saved.`);
+        closeCameraModal();
+    }
+
+    function deleteCamera(id) {
+        if(confirm("Confirm deletion of this feed?")) {
+            cameras = cameras.filter(c => c.id !== id);
+            localStorage.setItem('shadow_cameras', JSON.stringify(cameras));
+            renderCameras();
+            addLog(`Camera ID ${id} purged from system.`);
+        }
+    }
+
+    function testConnection() {
+        const btn = event.target;
+        btn.innerText = "TESTING...";
+        setTimeout(() => {
+            alert("Connection successful. Handshake protocol established with 192.168.1.100.");
+            btn.innerText = "TEST";
+        }, 1500);
+    }
+
+    function renderCameras() {
+        const container = document.getElementById('camera-list');
+        if(cameras.length === 0) {
+            container.innerHTML = '<div class="empty-state">No cameras online. Access restricted.</div>';
+            return;
+        }
+        container.innerHTML = cameras.map(cam => `
+            <div class="cam-card">
+                <div class="cam-preview">
+                    ${cam.status === 'online' ? 
+                        `<div style="color:var(--accent-red); font-size: 10px; text-shadow: 0 0 5px red">LIVE STREAM ENCRYPTED</div>` : 
+                        `<div style="color:#444">LINK LOST</div>`}
+                    <div class="cam-overlay">
+                        <div class="status-dot ${cam.status === 'online' ? 'status-online' : 'status-offline'}"></div>
+                        ${cam.status.toUpperCase()} | ${cam.loc.toUpperCase()}
+                    </div>
+                </div>
+                <div class="cam-details">
+                    <div style="font-weight:bold; letter-spacing:1px">${cam.name.toUpperCase()}</div>
+                    <div style="font-size:10px; color:var(--text-secondary); margin-bottom:10px">${cam.brand} @ ${cam.ip}</div>
+                    <div class="cam-actions">
+                        <button onclick="openCameraModal('${cam.id}')">EDIT</button>
+                        <button class="secondary" onclick="deleteCamera('${cam.id}')">DEL</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // AI Chat
+    function sendChat() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if(!text) return;
+
+        appendMessage('user', text);
+        input.value = '';
+
+        setTimeout(() => {
+            let response = "Shadow Hub AI is processing. ";
+            if(text.toLowerCase().includes("status")) {
+                const onlineCount = cameras.filter(c => c.status === 'online').length;
+                response = `Current tactical overview: ${onlineCount}/${cameras.length} feeds online. Perimeter secure.`;
+            } else if(text.toLowerCase().includes("camera")) {
+                response = "Navigating to Camera Hub interface...";
+                switchView('cameras');
+            } else {
+                response = `Instruction received: "${text}". I have no direct hardware feedback for this action yet, Operator. Using ${settings.provider} for analysis.`;
+            }
+            appendMessage('ai', response);
+        }, 800);
+    }
+
+    function appendMessage(sender, text) {
+        const box = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = `message msg-${sender}`;
+        div.innerText = text;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // Settings
+    function saveAISettings() {
+        settings = {
+            provider: document.getElementById('ai-provider').value,
+            openai: document.getElementById('openai-key').value,
+            gemini: document.getElementById('gemini-key').value
+        };
+        localStorage.setItem('shadow_settings', JSON.stringify(settings));
+        updateBadge();
+    }
+
+    function updateBadge() {
+        document.getElementById('active-provider-badge').innerText = settings.provider.toUpperCase();
+    }
+
+    function addLog(msg) {
+        const log = document.getElementById('diagnostics-log');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg.toUpperCase()}`;
+        log.prepend(entry);
+    }
+
+    // Init
+    window.onload = () => {
+        renderCameras();
+        document.getElementById('ai-provider').value = settings.provider;
+        document.getElementById('openai-key').value = settings.openai;
+        document.getElementById('gemini-key').value = settings.gemini;
+        updateBadge();
+        addLog("SYSTEM BOOT SEQUENCE COMPLETE");
+    };
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+    }
+</script>
+
+</body>
+</html>
